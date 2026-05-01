@@ -1,28 +1,18 @@
-# Gurunagaraj-Zeotap-IMS
-Mission-Critical Incident Management System (IMS) built for the Zeotap Engineering Challenge. Features async high-throughput ingestion, Redis debouncing, and a strict RCA workflow.
-Here is the absolute final, 100% complete, and enterprise-grade project report. 
 
-This version includes the hardened backend code (with security, logging, and pagination), the unit tests, the non-functional requirements (NFRs) for your bonus points, and the collapsible code vault. 
-
-Simply copy the entire block below, paste it into the `README.md` file in your new GitHub repository, commit the changes, and then export it as your PDF!
-
-***
-
-```markdown
-# Zeotap Mission-Critical Incident Management System (IMS)
+## Zeotap Mission-Critical Incident Management System (IMS)
 
 **Comprehensive Engineering Report & Codebase**
 
 ## 🔗 Project Links & Candidate Information
 *(Evaluator: Please refer to the links below for the live demonstration and interactive architecture overview)*
 
-* **👨‍💻 GitHub Repository:** `[Insert Your GitHub Repo Link Here]`
-* **🌐 Live Webpage / Demo Link:** `[Insert Your Live Hosted Webpage Link Here]`
-* **✨ Interactive Architecture SPA:** `[Insert Link to interactive_report.html Here]`
+* **👨‍💻 GitHub Repository:** `[]`
+* **🌐 Live Webpage / Demo Link:** `[]`
+* **✨ Interactive Architecture SPA:** `[]`
 * **👤 Candidate Name:** V Gurunagaraj
 * **🧠 Background:** Civil Engineer | Eco-Conscious Infrastructure & IoT Innovator
 * **📧 Contact:** vgurunagaraj5@gmail.com | 9686622236
-* **💼 LinkedIn:** `[Insert LinkedIn URL]`
+* **💼 LinkedIn:** `[]`
 
 ---
 
