@@ -468,7 +468,7 @@ if __name__ == "__main__":
 > 
 > *The operational dashboard connects directly to the FastAPI `/incidents` endpoint, features a Live Redis Hot-Path feed, dynamic MongoDB log fetching, and an RCA resolution modal with validation feedback.*
 
-</details>
+
 
 <br>
 ```
