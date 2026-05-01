@@ -4,7 +4,7 @@
 **Comprehensive Engineering Report & Codebase**
 
 ## 🔗 Project Links & Candidate Information
-*(Evaluator: Please refer to the links below for the live demonstration and interactive architecture overview)*
+*(Evaluator: Please refer to the links below for the live demonstration. 💡 Tip: Open the Interactive Architecture SPA on an Android phone to experience the built-in haptic feedback!)*
 
 * **👨‍💻 GitHub Repository:** https://github.com/GURUNAGARAJ-V/Gurunagaraj-Zeotap-IMS
 * **✨ Interactive Architecture SPA:** https://gurunagaraj-v.github.io/Gurunagaraj-Zeotap-IMS/interactive_report.html
