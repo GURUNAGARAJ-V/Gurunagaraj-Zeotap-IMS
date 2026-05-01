@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zeotap IMS | Production Control Room</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Premium Background with technical grid */
+        body { 
+            background-color: #0f172a; 
+            background-image: radial-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            color: #e2e8f0; 
+            font-family: 'Inter', system-ui, sans-serif; 
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* Glassmorphism utilities */
+        .glass-panel { 
+            background: rgba(30, 41, 59, 0.65); 
+            backdrop-filter: blur(12px); 
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.3);
+        }
+        
+        /* Incident Severity Borders */
+        .critical-border { border-left: 4px solid #ef4444; }
+        .warning-border { border-left: 4px solid #f59e0b; }
+        .closed-border { border-left: 4px solid #10b981; opacity: 0.7; }
+        
+        /* Modal & UI Transitions */
+        .modal-enter { opacity: 0; transform: scale(0.95); transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .modal-enter-active { opacity: 1; transform: scale(1); }
+        .hover-lift { transition: all 0.2s ease; }
+        .hover-lift:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.2); }
+        
+        /* Custom Scrollbar for Raw Logs */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen flex flex-col">
+    <!-- Top Navigation -->
+    <nav class="max-w-7xl mx-auto w-full flex items-center justify-between mb-8 pb-4 border-b border-slate-800">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-sky-400 flex items-center justify-center shadow-[0_0_15px_rgba(56,189,248,0.4)]">
+                <span class="text-white font-bold text-xl font-mono">Z</span>
+            </div>
+            <div>
+                <h1 class="text-xl font-extrabold text-white tracking-tight">zeotap</h1>
+                <p class="text-[10px] text-sky-400 uppercase tracking-[0.2em] font-semibold">Incident Management</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <div id="connection-status" class="flex items-center gap-2 px-3 py-1 bg-emerald-900/30 border border-emerald-800 rounded-full">
+                <span class="relative flex h-2 w-2">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span class="text-xs text-emerald-400 font-semibold uppercase tracking-wider">System Healthy</span>
+            </div>
+            <button onclick="fetchIncidents()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg text-sm font-semibold transition border border-slate-600 shadow-sm active:scale-95">
+                <span class="mr-1">↻</span> Sync
+            </button>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto w-full flex flex-col lg:flex-row gap-6 flex-1">
+        <!-- Left Column: Live Feed (Redis Hot-Path) -->
+        <div class="flex-1 flex flex-col">
+            <header class="mb-4 flex justify-between items-end">
+                <div>
+                    <h2 class="text-2xl font-bold text-white tracking-tight">Active Operations Feed</h2>
+                    <p class="text-slate-400 text-sm mt-1">Reading 0-latency state from <span class="text-yellow-500 font-mono text-xs bg-yellow-900/20 px-1 rounded">Redis Hot-Path</span></p>
+                </div>
+            </header>
+
+            <div id="feed" class="space-y-4 overflow-y-auto pr-2 pb-10">
+                <!-- Feed Placeholder -->
+                <div class="glass-panel p-8 rounded-2xl flex flex-col items-center justify-center text-center h-64 border-dashed border-slate-700">
+                    <span class="text-4xl mb-3 opacity-50">📡</span>
+                    <p class="text-slate-400 font-medium">Listening for telemetry anomalies...</p>
+                    <p class="text-xs text-slate-500 mt-2">Start the Python simulator to ingest signals.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Incident Details & Raw Logs (MongoDB) -->
+        <div class="w-full lg:w-[450px] flex-shrink-0">
+            <div class="glass-panel rounded-3xl p-6 h-[80vh] flex flex-col sticky top-8 shadow-2xl relative overflow-hidden">
+                <!-- Decorative gradient glow -->
+                <div class="absolute -top-24 -right-24 w-48 h-48 bg-sky-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10"></div>
+                
+                <h2 class="text-xl font-bold text-white mb-4 flex items-center gap-2 relative z-10">
+                    <span class="bg-slate-800 p-1.5 rounded-lg border border-slate-700">🔬</span> Deep Inspection
+                </h2>
+                
+                <div id="detail-placeholder" class="flex-1 flex flex-col items-center justify-center text-slate-400 text-sm text-center relative z-10">
+                    <span class="text-5xl mb-4 opacity-50 filter grayscale">🗂️</span>
+                    <p class="max-w-[250px]">Select an incident from the feed to view its raw debounced payloads from the Data Lake.</p>
+                </div>
+
+                <div id="detail-content" class="hidden flex-col h-full relative z-10">
+                    <div class="mb-4 pb-4 border-b border-slate-700/50">
+                        <div class="flex items-center justify-between">
+                            <span id="detail-id" class="text-[10px] bg-slate-800/80 text-sky-400 px-2 py-1 rounded font-mono border border-sky-900/50 uppercase tracking-wider font-bold">INC-XXXXXX</span>
+                            <span class="text-[10px] text-slate-500 font-mono flex items-center gap-1"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block"></span> MongoDB Connected</span>
+                        </div>
+                        <h3 id="detail-component" class="text-xl font-extrabold text-white mt-3 tracking-tight">COMPONENT_NAME</h3>
+                    </div>
+                    
+                    <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em] mb-3">Raw Signals (Aggregated)</h4>
+                    
+                    <!-- Raw Logs Terminal -->
+                    <div id="raw-logs-container" class="flex-1 overflow-y-auto space-y-2 bg-[#0b1120] p-4 rounded-xl border border-slate-800 font-mono text-[11px] text-emerald-400 shadow-inner">
+                        <!-- Logs injected here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RCA Submission Modal (Glassmorphism & Blur) -->
+    <div id="rcaModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4 transition-opacity">
+        <div id="rcaContent" class="glass-panel border border-slate-600/50 p-8 rounded-3xl w-full max-w-lg shadow-[0_20px_60px_rgba(0,0,0,0.5)] modal-enter relative overflow-hidden">
+            <!-- Decorative Modal Glow -->
+            <div class="absolute -top-32 -left-32 w-64 h-64 bg-indigo-500 rounded-full mix-blend-multiply filter blur-[80px] opacity-20"></div>
+
+            <h2 class="text-2xl font-extrabold text-white mb-1 tracking-tight">Incident Resolution</h2>
+            <p class="text-sm text-slate-400 mb-6 font-light">Mandatory RCA documentation required for closure.</p>
+            
+            <div class="space-y-5 relative z-10">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Root Cause Category</label>
+                    <select id="rcaCategory" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-sky-500 outline-none shadow-inner appearance-none cursor-pointer">
+                        <option value="Network Timeout / Packet Loss">Network Timeout / Packet Loss</option>
+                        <option value="Database Connection Exhaustion">Database Connection Exhaustion</option>
+                        <option value="Memory Leak / OOM">Memory Leak / OOM</option>
+                        <option value="Third-Party API Failure">Third-Party API Failure</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Detailed Fix Applied</label>
+                    <textarea id="rcaFix" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl p-3 text-white h-32 focus:ring-2 focus:ring-sky-500 outline-none placeholder-slate-600 shadow-inner resize-none" placeholder="Elaborate on the remediation steps taken... (Minimum 10 chars)"></textarea>
+                </div>
+                
+                <!-- Error Alert Box -->
+                <div id="rcaError" class="hidden flex items-start gap-3 bg-red-900/20 p-4 rounded-xl border border-red-900/50">
+                    <span class="text-red-400 mt-0.5">⚠️</span>
+                    <div>
+                        <h4 class="text-red-400 text-sm font-bold">Validation Failed</h4>
+                        <p id="rcaErrorText" class="text-red-300/80 text-xs mt-1"></p>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-3 mt-8 pt-6 border-t border-slate-700/50">
+                    <button onclick="closeModal()" class="px-5 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl font-semibold transition">Cancel</button>
+                    <button onclick="submitRCA()" class="bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white px-6 py-2.5 rounded-xl shadow-[0_0_15px_rgba(14,165,233,0.3)] font-bold transition active:scale-95">Submit RCA & Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = "http://127.0.0.1:8000";
+        let currId = null;
+
+        // --- Fetch from Redis Hot-Path ---
+        async function fetchIncidents() {
+            try {
+                const res = await fetch(`${API}/incidents`);
+                if (!res.ok) throw new Error("Failed to fetch");
+                const data = await res.json();
+                updateConnectionStatus(true);
+                renderFeed(data);
+            } catch (err) {
+                // Backend not reachable - Prevent console spam and load mock data for preview
+                updateConnectionStatus(false);
+                renderFeed(getMockIncidents());
+            }
+        }
+
+        function updateConnectionStatus(isOnline) {
+            const statusBadge = document.getElementById('connection-status');
+            if (isOnline) {
+                statusBadge.className = "flex items-center gap-2 px-3 py-1 bg-emerald-900/30 border border-emerald-800 rounded-full";
+                statusBadge.innerHTML = `
+                    <span class="relative flex h-2 w-2">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span class="text-xs text-emerald-400 font-semibold uppercase tracking-wider">System Healthy</span>`;
+            } else {
+                statusBadge.className = "flex items-center gap-2 px-3 py-1 bg-amber-900/30 border border-amber-800 rounded-full";
+                statusBadge.innerHTML = `
+                    <span class="relative flex h-2 w-2">
+                      <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                    </span>
+                    <span class="text-xs text-amber-400 font-semibold uppercase tracking-wider">Backend Offline (Mock Mode)</span>`;
+            }
+        }
+
+        function getMockIncidents() {
+            return [
+                {
+                    incident_id: "INC-A1B2C3D4",
+                    component_id: "RDBMS_NODE_01",
+                    severity: "P0_CRITICAL",
+                    status: "OPEN",
+                    start_time: new Date(Date.now() - 1000 * 60 * 5).toISOString().replace('T', ' ').substring(0, 19),
+                    mttr_minutes: null
+                },
+                {
+                    incident_id: "INC-E5F6G7H8",
+                    component_id: "CACHE_CLUSTER_05",
+                    severity: "P2_WARNING",
+                    status: "CLOSED",
+                    start_time: new Date(Date.now() - 1000 * 60 * 60).toISOString().replace('T', ' ').substring(0, 19),
+                    mttr_minutes: 12.5
+                }
+            ];
+        }
+
+        function renderFeed(data) {
+            const feed = document.getElementById('feed');
+            
+            if (data.length === 0) {
+                feed.innerHTML = `
+                <div class="glass-panel p-8 rounded-2xl flex flex-col items-center justify-center text-center h-64 border-dashed border-slate-700">
+                    <span class="text-4xl mb-3 opacity-50">📡</span>
+                    <p class="text-slate-400 font-medium">Listening for telemetry anomalies...</p>
+                    <p class="text-xs text-slate-500 mt-2">Start the Python simulator to ingest signals.</p>
+                </div>`;
+                return;
+            }
+            
+            feed.innerHTML = '';
+            
+            data.sort((a, b) => {
+                if(a.status === 'OPEN' && b.status !== 'OPEN') return -1;
+                if(a.status !== 'OPEN' && b.status === 'OPEN') return 1;
+                return new Date(b.start_time) - new Date(a.start_time);
+            });
+
+            data.forEach(inc => {
+                let borderClass = inc.status === 'CLOSED' ? 'closed-border' : (inc.severity.includes('P0') ? 'critical-border' : 'warning-border');
+                let mttrBadge = inc.mttr_minutes ? `<span class="bg-emerald-900/40 text-emerald-400 border border-emerald-800/50 px-2 py-0.5 rounded text-[10px] ml-3 font-bold">MTTR: ${inc.mttr_minutes}m</span>` : '';
+                
+                let actionArea = inc.status === 'OPEN' 
+                    ? `<button onclick="event.stopPropagation(); openModal('${inc.incident_id}')" class="bg-slate-800/80 hover:bg-sky-600 hover:border-sky-500 text-white text-xs font-bold px-4 py-2 rounded-lg transition border border-slate-600 shadow-sm">Resolve</button>`
+                    : `<span class="text-emerald-500 text-xs font-bold flex items-center gap-1.5"><span class="w-2 h-2 bg-emerald-500 rounded-full inline-block shadow-[0_0_5px_#10b981]"></span> Closed</span>`;
+
+                feed.innerHTML += `
+                    <div onclick="viewIncidentDetails('${inc.incident_id}', '${inc.component_id}')" class="glass-panel ${borderClass} hover-lift p-5 rounded-2xl flex justify-between items-center cursor-pointer transition shadow-sm mb-4 group relative overflow-hidden">
+                        <div class="absolute right-0 top-0 w-32 h-32 bg-gradient-to-bl from-white/5 to-transparent rounded-bl-full pointer-events-none"></div>
+                        <div class="relative z-10">
+                            <div class="flex items-center gap-3 mb-2">
+                                <span class="font-bold text-white text-lg tracking-tight group-hover:text-sky-400 transition">${inc.component_id}</span>
+                                <span class="text-[10px] font-extrabold ${inc.severity.includes('P0') ? 'bg-red-900/40 text-red-400 border-red-800/50' : 'bg-amber-900/40 text-amber-400 border-amber-800/50'} px-2 py-1 rounded border tracking-wider">${inc.severity.replace('_', ' ')}</span>
+                            </div>
+                            <div class="flex items-center text-xs text-slate-400 font-mono bg-slate-900/50 w-max px-2 py-1 rounded-md border border-slate-800">
+                                <span class="text-sky-400/80">${inc.incident_id}</span>
+                                <span class="mx-2 text-slate-600">|</span>
+                                <span>${inc.start_time}</span>
+                                ${mttrBadge}
+                            </div>
+                        </div>
+                        <div class="relative z-10 pl-4">${actionArea}</div>
+                    </div>`;
+            });
+        }
+
+        // --- Fetch from MongoDB Data Lake ---
+        async function viewIncidentDetails(incidentId, component) {
+            document.getElementById('detail-placeholder').classList.add('hidden');
+            const contentPane = document.getElementById('detail-content');
+            contentPane.classList.remove('hidden');
+            contentPane.classList.add('flex');
+            
+            document.getElementById('detail-id').innerText = incidentId;
+            document.getElementById('detail-component').innerText = component;
+            
+            const logsContainer = document.getElementById('raw-logs-container');
+            logsContainer.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full text-slate-500 space-y-3">
+                    <span class="animate-spin text-2xl inline-block">⟳</span>
+                    <span>Querying MongoDB Data Lake...</span>
+                </div>`;
+
+            try {
+                const res = await fetch(`${API}/incidents/${incidentId}/logs`);
+                if (!res.ok) throw new Error("HTTP Error");
+                const logs = await res.json();
+                renderLogs(logs);
+            } catch (e) {
+                // Fallback to mock logs if backend offline
+                const mockLogs = [
+                    { ingest_time: new Date().toISOString(), payload: { error: "Connection timeout", trace: "trace-" + Math.random().toString(36).substring(7) } },
+                    { ingest_time: new Date(Date.now() - 100).toISOString(), payload: { error: "Connection timeout", trace: "trace-" + Math.random().toString(36).substring(7) } },
+                    { ingest_time: new Date(Date.now() - 250).toISOString(), payload: { error: "Connection timeout", trace: "trace-" + Math.random().toString(36).substring(7) } }
+                ];
+                renderLogs(mockLogs);
+            }
+        }
+
+        function renderLogs(logs) {
+            const logsContainer = document.getElementById('raw-logs-container');
+            logsContainer.innerHTML = '';
+            
+            if(logs.length === 0) {
+                logsContainer.innerHTML = '<div class="text-slate-500 text-center mt-6">No raw logs found.</div>';
+                return;
+            }
+            
+            logs.forEach(log => {
+                const timeString = log.ingest_time.split('T')[1]?.split('.')[0] || new Date(log.ingest_time).toLocaleTimeString();
+                logsContainer.innerHTML += `
+                    <div class="pb-3 border-b border-slate-800 mb-3 opacity-70 hover:opacity-100 transition-opacity flex gap-3">
+                        <span class="text-sky-500 font-bold shrink-0">[${timeString}]</span> 
+                        <span class="text-slate-300 break-all leading-relaxed">${JSON.stringify(log.payload)}</span>
+                    </div>
+                `;
+            });
+        }
+
+        // --- Modal Interactions ---
+        function openModal(id) { 
+            currId = id; 
+            const modal = document.getElementById('rcaModal');
+            const content = document.getElementById('rcaContent');
+            document.getElementById('rcaError').classList.add('hidden');
+            
+            modal.classList.remove('hidden'); 
+            requestAnimationFrame(() => {
+                content.classList.add('modal-enter-active');
+            });
+        }
+        
+        function closeModal() { 
+            const content = document.getElementById('rcaContent');
+            content.classList.remove('modal-enter-active');
+            setTimeout(() => {
+                document.getElementById('rcaModal').classList.add('hidden'); 
+                currId = null; 
+            }, 250);
+        }
+
+        async function submitRCA() {
+            const root_cause = document.getElementById('rcaCategory').value;
+            const fix_applied = document.getElementById('rcaFix').value;
+            const errorBox = document.getElementById('rcaError');
+            const errorText = document.getElementById('rcaErrorText');
+
+            try {
+                const res = await fetch(`${API}/incidents/${currId}/close`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ root_cause, fix_applied })
+                });
+                
+                if(res.ok) { 
+                    closeModal(); 
+                    document.getElementById('rcaFix').value = '';
+                    fetchIncidents(); 
+                } else {
+                    const errorData = await res.json();
+                    errorText.innerText = errorData.detail || "Unknown validation error.";
+                    errorBox.classList.remove('hidden');
+                    errorBox.classList.add('animate-pulse');
+                    setTimeout(() => errorBox.classList.remove('animate-pulse'), 500);
+                }
+            } catch (err) {
+                if (fix_applied.length > 5) {
+                    closeModal();
+                    document.getElementById('rcaFix').value = '';
+                    fetchIncidents();
+                } else {
+                    errorText.innerText = "Validation Failed: Fix details too brief.";
+                    errorBox.classList.remove('hidden');
+                }
+            }
+        }
+
+        fetchIncidents();
+        setInterval(fetchIncidents, 3000); 
+    </script>
+</body>
+</html>
