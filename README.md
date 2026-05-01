@@ -7,8 +7,8 @@
 *(Evaluator: Please refer to the links below for the live demonstration and interactive architecture overview)*
 
 * **👨‍💻 GitHub Repository:** https://github.com/GURUNAGARAJ-V/Gurunagaraj-Zeotap-IMS
+* **✨ Interactive Architecture SPA:** https://gurunagaraj-v.github.io/Gurunagaraj-Zeotap-IMS/interactive_report.html
 * **🌐 Live Webpage / Demo Link:** https://gurunagaraj-v.github.io/Gurunagaraj-Zeotap-IMS/frontend/index.html
-* **✨ Interactive Architecture SPA:** https://gurunagaraj-v.github.io/Gurunagaraj-Zeotap-IMS/interactive_report.html`
 * **👤 Candidate Name:** V Gurunagaraj
 * **🧠 Background:** Civil Engineer | Eco-Conscious Infrastructure & IoT Innovator
 * **📧 Contact:** vgurunagaraj5@gmail.com | 9686622236
