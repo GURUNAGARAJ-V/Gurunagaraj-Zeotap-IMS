@@ -1,5 +1,5 @@
 
-## Zeotap Mission-Critical Incident Management System (IMS)
+# Zeotap Mission-Critical Incident Management System (IMS)
 
 **Comprehensive Engineering Report & Codebase**
 
@@ -12,7 +12,7 @@
 * **👤 Candidate Name:** V Gurunagaraj
 * **🧠 Background:** Civil Engineer | Eco-Conscious Infrastructure & IoT Innovator
 * **📧 Contact:** vgurunagaraj5@gmail.com | 9686622236
-* **💼 LinkedIn:** `[]`
+* **💼 LinkedIn:** linkedin.com/in/vgurunagarajcivilengineer
 
 ---
 
